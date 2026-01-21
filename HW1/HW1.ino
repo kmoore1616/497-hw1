@@ -15,8 +15,8 @@
 #define LIGHT_RED_EAST 18
 #define LIGHT_GREEN_EAST 19
 
-#define EAST_LIGHT_GREEN 0
-#define WEST_LIGHT_GREEN 1
+#define EAST_LIGHT_GREEN 1
+#define WEST_LIGHT_GREEN 2
 
 int previousBtnState = HIGH; 
 int currentBtnState;     
@@ -28,6 +28,9 @@ unsigned long StartTimerVal = 0;
 const int SHORT_PRESS_TIME = 500; 
 
 bool ButtonTooggleState;
+
+bool alternateStartingPattern = false;   
+
 
 
 enum TrafficLightState{
@@ -42,7 +45,7 @@ enum TrafficLightState{
 TrafficLightState SystemState;
 
 hw_timer_t *timer = NULL;
-bool alarm_triggered = false;
+volatile bool alarm_triggered = false;
 
 /*
   To set alarm:
@@ -115,17 +118,16 @@ void setLights(uint8_t lights){
     digitalWrite(LIGHT_GREEN_EAST,HIGH);
     digitalWrite(LIGHT_RED_EAST,LOW);
     
-  }else if(lights & !EAST_LIGHT_GREEN){
+  }else { //if(lights & !EAST_LIGHT_GREEN){
     // Turn east light red
     digitalWrite(LIGHT_GREEN_EAST,LOW);
     digitalWrite(LIGHT_RED_EAST,HIGH);
-
   }
   if(lights & WEST_LIGHT_GREEN){
     // Turn west light green
     digitalWrite(LIGHT_GREEN_WEST,HIGH);
     digitalWrite(LIGHT_RED_WEST,LOW);
-  }else if(lights & !WEST_LIGHT_GREEN){
+  }else {// if(lights & !WEST_LIGHT_GREEN){
     // Turn west light red
      digitalWrite(LIGHT_GREEN_WEST,LOW);
     digitalWrite(LIGHT_RED_WEST,HIGH);
@@ -151,9 +153,9 @@ void TrafficLight(int SignalVarEAST, int SignalVarWEST)
     Serial.print("STATE:");
     Serial.println(SystemState);
 
+
   switch(SystemState){ 
     case ALTERNATE:    
-        bool alternateStartingPattern = false;   
         uint8_t startPattern = WEST_LIGHT_GREEN | !EAST_LIGHT_GREEN;    
         if(SignalVarEAST <= 10)
         {
@@ -176,8 +178,8 @@ void TrafficLight(int SignalVarEAST, int SignalVarWEST)
         if(alarm_triggered == true)
         {
           startPattern = startPattern ^ 3;
-          alternateStartingPattern = false; 
-
+          alarm_triggered = false; 
+          Serial.print("Trigger:");
         }
         // Turn on east green
         // 30 second alarm
@@ -227,6 +229,6 @@ void loop() {
   int signalTL1Var = USRead1();
   int signalTL2Var = USRead2();
   TrafficLight(signalTL1Var, signalTL2Var);
-  delay(1500);
+  delay(10);
 }
 
