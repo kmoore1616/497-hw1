@@ -7,6 +7,11 @@
 
 #define BUTTON_PIN 23 // button pin D23
 
+#define EAST_LIGHT_GREEN 0
+#define WEST_LIGHT_GREEN 1
+#define EAST_LIGHT_RED 2
+#define WEST_LIGHT_RED 4
+
 int previousBtnState = HIGH; 
 int currentBtnState;     
 unsigned long pressedTime  = 0;
@@ -28,6 +33,19 @@ enum TrafficLightState{
 };
 
 TrafficLightState SystemState;
+
+void setLights(uint_8 lights){
+  if(lights & EAST_LIGHT_GREEN){
+    // Turn east light green
+  }else if(lights & EAST_LIGHT_RED){
+    // Turn east light red
+  }
+  if(lights & WEST_LIGHT_GREEN){
+    // Turn west light green
+  }else if(lights & WEST_LIGHT_RED){
+    // Turn west light red
+  }
+}
 
 
 int USRead1()
@@ -130,4 +148,3 @@ void loop() {
   TrafficLight(signalTL1Var, signalTL2Var);
   delay(1500);
 }
-
