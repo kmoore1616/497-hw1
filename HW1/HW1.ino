@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #define US1TrigPin 2 // green jumper wires
 #define US1EchoPin 4 // yellow jumper wires
 
@@ -7,10 +9,14 @@
 
 #define BUTTON_PIN 23 // button pin D23
 
+#define LIGHT_GREEN_WEST 25
+#define LIGHT_RED_WEST 26
+
+#define LIGHT_RED_EAST 18
+#define LIGHT_GREEN_EAST 19
+
 #define EAST_LIGHT_GREEN 0
 #define WEST_LIGHT_GREEN 1
-#define EAST_LIGHT_RED 2
-#define WEST_LIGHT_RED 4
 
 int previousBtnState = HIGH; 
 int currentBtnState;     
@@ -25,27 +31,29 @@ bool ButtonTooggleState;
 
 
 enum TrafficLightState{
-  ALL_STOP, // All Traffic STOP, L1 = RED_LED + L2 = RED_LED
-  STOP_EAST, // L1 = RED_LED,  L2 = GREEN_LED
-  STOP_WEST, // L2 = RED_LED, L1 = GREEN_LED
-  GO_EAST, // L1 = GREEN_LED, L2 = RED_LED
-  GO_WEST // L2 = GREEN_LED, L1 = RED_LED
+  X_Walk,
+  ALTERNATE,
+  HARD_GREEN_EAST,
+  HARD_GREEN_WEST,
+  SOFT_GREEN_EAST,
+  SOFT_GREEN_WEST
 };
 
 TrafficLightState SystemState;
 
-void setLights(uint_8 lights){
-  if(lights & EAST_LIGHT_GREEN){
-    // Turn east light green
-  }else if(lights & EAST_LIGHT_RED){
-    // Turn east light red
-  }
-  if(lights & WEST_LIGHT_GREEN){
-    // Turn west light green
-  }else if(lights & WEST_LIGHT_RED){
-    // Turn west light red
-  }
+hw_timer_t *timer = NULL;
+bool alarm_triggered = false;
+
+/*
+  To set alarm:
+  timerAlarm(timer, ALARM_MS, false, 0);
+  where delay_ms is the alarm time in milliseconds
+*/
+
+void ARDUINO_ISR_ATTR onTimer() {
+  alarm_triggered = true;
 }
+
 
 
 int USRead1()
@@ -101,33 +109,90 @@ void buttonPress(int sensorVal)
     // previousBtnState = currentBtnState;
 }
 
-void TrafficLight(int SignalVarTL1, int SignalVarTL2)
+void setLights(uint8_t lights){
+  if(lights & EAST_LIGHT_GREEN){
+    // Turn east light green
+    digitalWrite(LIGHT_GREEN_EAST,HIGH);
+    digitalWrite(LIGHT_RED_EAST,LOW);
+    
+  }else if(lights & !EAST_LIGHT_GREEN){
+    // Turn east light red
+    digitalWrite(LIGHT_GREEN_EAST,LOW);
+    digitalWrite(LIGHT_RED_EAST,HIGH);
+
+  }
+  if(lights & WEST_LIGHT_GREEN){
+    // Turn west light green
+    digitalWrite(LIGHT_GREEN_WEST,HIGH);
+    digitalWrite(LIGHT_RED_WEST,LOW);
+  }else if(lights & !WEST_LIGHT_GREEN){
+    // Turn west light red
+     digitalWrite(LIGHT_GREEN_WEST,LOW);
+    digitalWrite(LIGHT_RED_WEST,HIGH);
+  }
+}
+
+void TrafficLight(int SignalVarEAST, int SignalVarWEST)
 {
   Serial.print("Distance TL 1 in inches 1: ");
-  Serial.println(SignalVarTL1);
+  Serial.println(SignalVarEAST);
   Serial.print("Distance TL 2 in inches 1: ");
-  Serial.println(SignalVarTL2);
+  Serial.println(SignalVarWEST);
 
   buttonPress(digitalRead(BUTTON_PIN));
-  // Alternate
-  if(digitalRead(BUTTON_PIN, LOW)){
+  
+  // Cross Walk State
+  if(digitalRead(BUTTON_PIN) == LOW){
     // GOTO Crosswalk
-    SystemState = ALL_STOP;
+    SystemState = X_Walk;
   }
 
-  // State Transitions
-  switch(TrafficLightState)
-  { 
-    case ALL_STOP: 
+
+    Serial.print("STATE:");
+    Serial.println(SystemState);
+
+  switch(SystemState){ 
+    case ALTERNATE:    
+        bool alternateStartingPattern = false;   
+        uint8_t startPattern = WEST_LIGHT_GREEN | !EAST_LIGHT_GREEN;    
+        if(SignalVarEAST <= 10)
+        {
+          Serial.println("INCOMING CAR EAST");
+          SystemState = HARD_GREEN_EAST;
+        }
+        else if(SignalVarWEST <= 10)
+        {
+          Serial.println("INCOMING CAR WEST");
+            SystemState = HARD_GREEN_WEST;
+        }
+
+        if(!alternateStartingPattern)
+        {
+          setLights(WEST_LIGHT_GREEN | !EAST_LIGHT_GREEN);
+          alternateStartingPattern = true; 
+          timerAlarm(timer, 5000, true, 0);
+        }
+        
+        if(alarm_triggered == true)
+        {
+          startPattern = startPattern ^ 3;
+          alternateStartingPattern = false; 
+
+        }
+        // Turn on east green
+        // 30 second alarm
         // Crosswalk
         // Turn All Lights RED
-        delay(60000);
-      break;
-    case 
 
+      break;
+    // case HARD_GREEN_EAST:
+    //   break;
+    // case HARD_GREEN_WEST:
+    //   break;
+    // case X_Walk:
+    //   break;
   }
 
-  // State Actions
 }
  
 
@@ -140,6 +205,22 @@ void setup() {
   pinMode(US2TrigPin,OUTPUT);
   pinMode(US2EchoPin,INPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  pinMode(LIGHT_RED_EAST,OUTPUT);
+  pinMode(LIGHT_GREEN_EAST,OUTPUT);
+  pinMode(LIGHT_RED_WEST,OUTPUT);
+  pinMode(LIGHT_GREEN_WEST,OUTPUT);
+
+  // digitalWrite(LIGHT_RED_EAST,HIGH);
+  // digitalWrite(LIGHT_GREEN_EAST,HIGH);
+  // digitalWrite(LIGHT_RED_WEST,HIGH);
+  // digitalWrite(LIGHT_GREEN_WEST,HIGH);
+
+  SystemState = ALTERNATE;
+
+  timer = timerBegin(1000); // Timer goes for 1 ms per tick
+  timerAttachInterrupt(timer, &onTimer);
+  delay(1000);
 }
 
 void loop() {
@@ -148,3 +229,4 @@ void loop() {
   TrafficLight(signalTL1Var, signalTL2Var);
   delay(1500);
 }
+
