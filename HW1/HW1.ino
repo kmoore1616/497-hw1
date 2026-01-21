@@ -32,7 +32,6 @@ const int SHORT_PRESS_TIME = 500;
 bool ButtonTooggleState;
 
 
-
 enum TrafficLightState{
   X-Walk,
   ALTERNATE,
@@ -61,12 +60,12 @@ void ARDUINO_ISR_ATTR onTimer() {
 void setLights(uint_8 lights){
   if(lights & EAST_LIGHT_GREEN){
     // Turn east light green
-  }else if(lights & EAST_LIGHT_RED){
+  }else if(lights & !EAST_LIGHT_GREEN){
     // Turn east light red
   }
   if(lights & WEST_LIGHT_GREEN){
     // Turn west light green
-  }else if(lights & WEST_LIGHT_RED){
+  }else if(lights & !WEST_LIGHT_GREEN){
     // Turn west light red
   }
 }
@@ -142,10 +141,16 @@ void TrafficLight(int SignalVarTL1, int SignalVarTL2)
   // State Transitions
   switch(SystemState)
   { 
-    case ALL_STOP: 
-        // Crosswalk
-        // Turn All Lights RED
-        delay(60000);
+    case ALTERNATE: 
+      bool timer_started = false;
+      if(!timer_started){
+        setLight(WEST_LIGHT_GREEN | !EAST_LIGHT_GREEN);
+        // Alternate lights for 30 seconds
+        // if alarm not set: Starting pattern
+        
+        // Set alarm for 30 seconds (30000ms)
+        // When alarm is hit, alernate pattern
+        
       break;
     case 
 
