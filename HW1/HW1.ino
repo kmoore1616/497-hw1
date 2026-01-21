@@ -1,3 +1,4 @@
+#include <stdint.h>
 #define US1TrigPin 2 // green jumper wires
 #define US1EchoPin 4 // yellow jumper wires
 
@@ -9,8 +10,6 @@
 
 #define EAST_LIGHT_GREEN 0
 #define WEST_LIGHT_GREEN 1
-#define EAST_LIGHT_RED 2
-#define WEST_LIGHT_RED 4
 
 /*
  * States are:
@@ -31,6 +30,7 @@ const int SHORT_PRESS_TIME = 500;
 
 bool ButtonTooggleState;
 
+uint8_t startPattern = WEST_LIGHT_GREEN | !EAST_LIGHT_GREEN;
 
 enum TrafficLightState{
   X-Walk,
@@ -60,9 +60,10 @@ void ARDUINO_ISR_ATTR onTimer() {
 void setLights(uint_8 lights){
   if(lights & EAST_LIGHT_GREEN){
     // Turn east light green
-  }else if(lights & !EAST_LIGHT_GREEN){
+  }if(lights & !EAST_LIGHT_GREEN){
     // Turn east light red
   }
+  
   if(lights & WEST_LIGHT_GREEN){
     // Turn west light green
   }else if(lights & !WEST_LIGHT_GREEN){
