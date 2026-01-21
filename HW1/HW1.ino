@@ -32,6 +32,7 @@ const int SHORT_PRESS_TIME = 500;
 bool ButtonTooggleState;
 
 
+
 enum TrafficLightState{
   X-Walk,
   ALTERNATE,
@@ -42,6 +43,20 @@ enum TrafficLightState{
 };
 
 TrafficLightState SystemState;
+
+hw_timer_t *timer = NULL;
+bool alarm_triggered = false;
+
+/*
+  To set alarm:
+  timerAlarm(timer, ALARM_MS, false, 0);
+  where delay_ms is the alarm time in milliseconds
+*/
+
+void ARDUINO_ISR_ATTR onTimer() {
+  alarm_triggered = true;
+}
+
 
 void setLights(uint_8 lights){
   if(lights & EAST_LIGHT_GREEN){
@@ -149,6 +164,12 @@ void setup() {
   pinMode(US2TrigPin,OUTPUT);
   pinMode(US2EchoPin,INPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  timer = timerBegin(1000); // Timer goes for 1 ms per tick
+  timerAttachInterrupt(timer, &onTimer);
+
+
+  
 }
 
 void loop() {
