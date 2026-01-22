@@ -29,8 +29,8 @@ const int SHORT_PRESS_TIME = 500;
 
 bool ButtonTooggleState;
 
-bool alternateStartingPattern = false;   
-
+bool SystemStateStart = false;   
+//uint8_t startPattern = WEST_LIGHT_GREEN | !EAST_LIGHT_GREEN;    
 
 
 enum TrafficLightState{
@@ -57,8 +57,6 @@ void ARDUINO_ISR_ATTR onTimer() {
   alarm_triggered = true;
 }
 
-
-
 int USRead1()
 {
   digitalWrite(US1TrigPin, HIGH);
@@ -81,35 +79,6 @@ int USRead2()
 
   // Distance in inches:
   return(duration / 148);
-}
-
-void buttonPress(int sensorVal)
-{
-    // currentBtnState = sensorVal;
-    // if(previousBtnState == HIGH && currentBtnState == LOW)        
-    // {
-    //     pressedTime = millis();
-    // }
-    // else if(previousBtnState == LOW && currentBtnState == HIGH) 
-    // { 
-    //     releasedTime = millis();
-    //     long pressDuration = releasedTime - pressedTime;
-    //     if( pressDuration < SHORT_PRESS_TIME )
-    //     {
-    //         if(ButtonTooggleState == false)
-    //         {
-    //             Serial.println("Button ON");
-    //             ButtonTooggleState = true;
-    //         } 
-    //         else 
-    //         {
-    //             Serial.println("Button OFF");
-    //             ButtonTooggleState = false;
-    //         }
-    //     }
-    // }
-    // // always update previous button state to the old currentBtnState before returning back to top of function call
-    // previousBtnState = currentBtnState;
 }
 
 void setLights(uint8_t lights){
@@ -136,12 +105,12 @@ void setLights(uint8_t lights){
 
 void TrafficLight(int SignalVarEAST, int SignalVarWEST)
 {
-  Serial.print("Distance TL 1 in inches 1: ");
-  Serial.println(SignalVarEAST);
-  Serial.print("Distance TL 2 in inches 1: ");
-  Serial.println(SignalVarWEST);
+  // Serial.print("Distance TL 1 in inches 1: ");
+  // Serial.println(SignalVarEAST);
+  // Serial.print("Distance TL 2 in inches 1: ");
+  // Serial.println(SignalVarWEST);
 
-  buttonPress(digitalRead(BUTTON_PIN));
+//  buttonPress(digitalRead(BUTTON_PIN));
   
   // Cross Walk State
   if(digitalRead(BUTTON_PIN) == LOW){
@@ -150,36 +119,47 @@ void TrafficLight(int SignalVarEAST, int SignalVarWEST)
   }
 
 
-    Serial.print("STATE:");
-    Serial.println(SystemState);
+    // Serial.print("STATE:");
+    // Serial.println(SystemState);
 
 
   switch(SystemState){ 
     case ALTERNATE:    
-        uint8_t startPattern = WEST_LIGHT_GREEN | !EAST_LIGHT_GREEN;    
         if(SignalVarEAST <= 10)
         {
           Serial.println("INCOMING CAR EAST");
+          SystemStateStart = false;
           SystemState = HARD_GREEN_EAST;
+          break;
         }
         else if(SignalVarWEST <= 10)
         {
           Serial.println("INCOMING CAR WEST");
-            SystemState = HARD_GREEN_WEST;
+          SystemState = HARD_GREEN_WEST;
+          SystemStateStart = false;
+          break;
         }
 
-        if(!alternateStartingPattern)
+        if(!SystemStateStart)
         {
           setLights(WEST_LIGHT_GREEN | !EAST_LIGHT_GREEN);
-          alternateStartingPattern = true; 
-          timerAlarm(timer, 5000, true, 0);
+          SystemStateStart = true; 
+          // timerAlarm(timer, 30000000, true, 0);
+          timerAlarm(timer, 1000000, true, 0); // testing time
         }
+
+        // Serial.print("alarm_triggered: ");
+        // Serial.println(alarm_triggered);
         
         if(alarm_triggered == true)
         {
-          startPattern = startPattern ^ 3;
+          //startPattern = startPattern ^ 0b00000011;
           alarm_triggered = false; 
-          Serial.print("Trigger:");
+          // setLights(startPattern);
+          digitalWrite(LIGHT_GREEN_EAST, !digitalRead(LIGHT_GREEN_EAST));
+          digitalWrite(LIGHT_GREEN_WEST, !digitalRead(LIGHT_GREEN_WEST));
+          digitalWrite(LIGHT_RED_EAST, !digitalRead(LIGHT_RED_EAST));
+          digitalWrite(LIGHT_RED_WEST, !digitalRead(LIGHT_RED_WEST));
         }
         // Turn on east green
         // 30 second alarm
@@ -187,14 +167,113 @@ void TrafficLight(int SignalVarEAST, int SignalVarWEST)
         // Turn All Lights RED
 
       break;
-    // case HARD_GREEN_EAST:
-    //   break;
-    // case HARD_GREEN_WEST:
-    //   break;
-    // case X_Walk:
-    //   break;
-  }
+    case HARD_GREEN_EAST:
+      if(!SystemStateStart)
+        {
+          digitalWrite(LIGHT_GREEN_EAST, HIGH);
+          digitalWrite(LIGHT_RED_EAST, LOW);
+          digitalWrite(LIGHT_GREEN_WEST, LOW);
+          digitalWrite(LIGHT_RED_WEST, HIGH);
+          SystemStateStart = true; 
+          timerAlarm(timer, 10000000, true, 0);
+          Serial.print("STATE:");
+          Serial.println(SystemState);
+        }
 
+        
+        if(alarm_triggered == true)
+        {
+          alarm_triggered = false; 
+          SystemState = SOFT_GREEN_EAST;
+          SystemStateStart = false;
+          break;
+        }
+      break;
+    case HARD_GREEN_WEST:
+      if(!SystemStateStart)
+        {
+          digitalWrite(LIGHT_GREEN_EAST, LOW);
+          digitalWrite(LIGHT_RED_EAST, HIGH);
+          digitalWrite(LIGHT_GREEN_WEST, HIGH);
+          digitalWrite(LIGHT_RED_WEST, LOW);
+          SystemStateStart = true; 
+          timerAlarm(timer, 10000000, false, 0);
+          Serial.print("STATE:");
+          Serial.println(SystemState);
+        }
+        
+        if(alarm_triggered == true)
+        {
+          alarm_triggered = false; 
+          SystemState = SOFT_GREEN_WEST;
+          SystemStateStart = false;
+          break;
+        }
+      break;
+    case SOFT_GREEN_EAST:
+        if(!SystemStateStart)
+        {
+          SystemStateStart = true; 
+          timerAlarm(timer, 20000000, false, 0);
+          Serial.print("STATE:");
+          Serial.println(SystemState);
+        }
+
+        if(SignalVarWEST <= 10)
+        {
+          Serial.println("INCOMING CAR WEST");
+          SystemState = HARD_GREEN_WEST;
+          SystemStateStart = false;
+          break;
+        }
+
+        
+        if(alarm_triggered == true)
+        {
+          alarm_triggered = false; 
+          SystemState = ALTERNATE;
+          SystemStateStart = false;
+          break;
+        }
+      break;
+    case SOFT_GREEN_WEST:
+        if(!SystemStateStart)
+        {
+          SystemStateStart = true; 
+          timerAlarm(timer, 20000000, false, 0);
+          Serial.print("STATE:");
+          Serial.println(SystemState);
+        }
+
+        if(SignalVarEAST <= 10)
+        {
+          Serial.println("INCOMING CAR WEST");
+          SystemState = HARD_GREEN_EAST;
+          SystemStateStart = false;
+          break;
+        }
+        
+        if(alarm_triggered == true)
+        {
+          alarm_triggered = false; 
+          SystemState = ALTERNATE;
+          SystemStateStart = false;
+          break;
+        }
+      break;      
+      break;
+    case X_Walk:
+      digitalWrite(LIGHT_GREEN_EAST, LOW);
+      digitalWrite(LIGHT_RED_EAST, HIGH);
+      digitalWrite(LIGHT_GREEN_WEST, LOW);
+      digitalWrite(LIGHT_RED_WEST, HIGH);
+      SystemState = ALTERNATE;
+      SystemStateStart = false;
+      Serial.print("STATE:");
+      Serial.println(SystemState);
+      delay(10000);
+      break;
+  }
 }
  
 
@@ -220,7 +299,8 @@ void setup() {
 
   SystemState = ALTERNATE;
 
-  timer = timerBegin(1000); // Timer goes for 1 ms per tick
+  // timer = timerBegin(1000000); // Timer goes for 1 ms per tick
+  timer = timerBegin(200000); // Timer goes for 1 ms per tick testing time
   timerAttachInterrupt(timer, &onTimer);
   delay(1000);
 }
