@@ -18,10 +18,17 @@
 #define EAST_LIGHT_GREEN 1
 #define WEST_LIGHT_GREEN 2
 
+#define 30_SECONDS 30000000
+#define 10_SECONDS 10000000
+#define 60_SECONDS 60000000
+
 int previousBtnState = HIGH; 
 int currentBtnState;     
 unsigned long pressedTime  = 0;
 unsigned long releasedTime = 0;
+
+
+
 
 unsigned long StartTimerVal = 0;
 
@@ -55,6 +62,24 @@ volatile bool alarm_triggered = false;
 
 void ARDUINO_ISR_ATTR onTimer() {
   alarm_triggered = true;
+}
+
+void ARDUINO_ISR_ATTR onTimer(){
+  timer_fired = true;
+}
+
+void set_60_second_timer(){
+    timerAlarm(timer, 60_SECONDS, true, 0);
+      
+}
+void set_30_second_timer(){
+    timerAlarm(timer, 30_SECONDS, true, 0);
+      
+}
+
+void set_10_second_timer(){
+    timerAlarm(timer, 10_SECONDS, true, 0);
+      
 }
 
 int USRead1()
